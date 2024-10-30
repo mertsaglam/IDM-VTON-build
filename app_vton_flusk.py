@@ -49,8 +49,8 @@ fixed_vae = args.fixed_vae
 
 dtype = torch.float16
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model_id = '/content/drive/Shared drives/AI/AIModels/IDM-VTON'
-vae_model_id = '/content/drive/Shared drives/AI/AIModels/sdxl-vae-fp16-fix'
+model_id = '/content/drive/Shareddrives/AI/AI Models/models/IDM-VTON'
+vae_model_id = '/content/drive/Shareddrives/AI/AI Models/models/sdxl-vae-fp16-fix'
 
 dtypeQuantize = dtype
 
