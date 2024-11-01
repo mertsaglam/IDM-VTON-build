@@ -3,6 +3,9 @@ import io
 import torch
 import logging
 from flask import Flask, request, jsonify
+import threading
+import queue
+import uuid
 from flask_cors import CORS
 from pyngrok import ngrok
 from PIL import Image
@@ -67,11 +70,78 @@ unet = None
 pipe = None
 UNet_Encoder = None
 
+#Initialize task queue and results dictionary
+task_queue = queue.Queue()
+task_results = {}
+task_lock = threading.Lock()
+
 # Define image transformation
 tensor_transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize([0.5], [0.5]),
 ])
+
+# Worker function to process tasks from the queue
+def task_worker():
+    while True:
+        task_id, task_data = task_queue.get()
+        try:
+            # Unpack task data
+            input_dict = task_data['input_dict']
+            garment_img = task_data['garment_img']
+            garment_desc = task_data['garment_desc']
+            category = task_data['category']
+            is_checked = task_data['is_checked']
+            is_checked_crop = task_data['is_checked_crop']
+            denoise_steps = task_data['denoise_steps']
+            is_randomize_seed = task_data['is_randomize_seed']
+            seed = task_data['seed']
+            number_of_images = task_data['number_of_images']
+
+            # Call your processing function
+            results, mask_gray = start_tryon(
+                input_dict,
+                garment_img,
+                garment_desc,
+                category,
+                is_checked,
+                is_checked_crop,
+                denoise_steps,
+                is_randomize_seed,
+                seed,
+                number_of_images,
+            )
+
+            # Encode output images to base64
+            encoded_results = []
+            for img_path in results:
+                try:
+                    with open(img_path, "rb") as img_file:
+                        encoded_results.append(base64.b64encode(img_file.read()).decode("utf-8"))
+                except Exception as e:
+                    logging.error(f"Error encoding image {img_path}: {e}")
+                    encoded_results.append(None)
+
+            # Store the result
+            with task_lock:
+                task_results[task_id] = {
+                    "status": "completed",
+                    "generated_images": encoded_results,
+                    "message": "Try-on processing completed"
+                }
+        except Exception as e:
+            logging.error(f"Exception during task processing: {e}")
+            with task_lock:
+                task_results[task_id] = {
+                    "status": "error",
+                    "message": str(e)
+                }
+        finally:
+            task_queue.task_done()
+
+# Start the worker thread
+worker_thread = threading.Thread(target=task_worker, daemon=True)
+worker_thread.start()
 
 # Helper function to decode base64 image
 def decode_image(base64_str):
@@ -309,38 +379,44 @@ def try_on():
         # Prepare input dictionary
         input_dict = {"background": human_img}
 
-        # Call try-on function
-        results, mask_gray = start_tryon(
-            input_dict,
-            garment_img,
-            garment_desc,
-            category,
-            is_checked,
-            is_checked_crop,
-            denoise_steps,
-            is_randomize_seed,
-            seed,
-            number_of_images,
-        )
+        # Generate a unique task ID
+        task_id = str(uuid.uuid4())
 
-        # Encode output images to base64
-        encoded_results = []
-        for img_path in results:
-            try:
-                with open(img_path, "rb") as img_file:
-                    encoded_results.append(base64.b64encode(img_file.read()).decode("utf-8"))
-            except Exception as e:
-                logging.error(f"Error encoding image {img_path}: {e}")
-                encoded_results.append(None)
+        # Enqueue the task
+        task_data = {
+            'input_dict': input_dict,
+            'garment_img': garment_img,
+            'garment_desc': garment_desc,
+            'category': category,
+            'is_checked': is_checked,
+            'is_checked_crop': is_checked_crop,
+            'denoise_steps': denoise_steps,
+            'is_randomize_seed': is_randomize_seed,
+            'seed': seed,
+            'number_of_images': number_of_images
+        }
+        with task_lock:
+            task_results[task_id] = {
+                "status": "pending",
+                "message": "Task is in the queue"
+            }
 
-        return jsonify({
-            "generated_images": encoded_results,
-            "message": "Try-on processing completed"
-        })
+        task_queue.put((task_id, task_data))
+
+        return jsonify({"task_id": task_id}), 202
 
     except Exception as e:
         logging.error(f"Exception during try-on: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
+# Endpoint to check task status
+@app.route("/task_status/<task_id>", methods=["GET"])
+def task_status(task_id):
+    with task_lock:
+        if task_id in task_results:
+            return jsonify(task_results[task_id])
+        else:
+            return jsonify({"status": "unknown", "message": "Task ID not found"}), 404
 
 # Simple route to test the server
 @app.route("/", methods=["GET"])
