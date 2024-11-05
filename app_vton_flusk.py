@@ -368,7 +368,7 @@ def login():
     password = request.json.get("password")
 
     # Replace this with your authentication logic
-    if username == "user" and password == "password":
+    if username == os.getenv("LOGIN_USERNAME") and password == os.getenv("LOGIN_PASSWORD"):
         access_token = create_access_token(identity=username)
         return jsonify(access_token=access_token)
     else:
