@@ -35,8 +35,13 @@ load_dotenv()
 dotenv_path = "/content/drive/Shared drives/AI/AI Models/models/colabenv/.env"
 load_dotenv(dotenv_path)
 app = Flask(__name__)
-app.config["JWT_SECRET_KEY"] = os.getenv("my_super_secret_key") 
+print("JWT_SECRET_KEY:", os.getenv("JWT_SECRET_KEY"))
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config["SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")  # Set SECRET_KEY as welljwt = JWTManager(app)
 jwt = JWTManager(app)
+# Verify the JWT_SECRET_KEY and SECRET_KEY are loaded correctly
+print("JWT_SECRET_KEY:", app.config["JWT_SECRET_KEY"])
+print("SECRET_KEY:", app.config["SECRET_KEY"])
 # Start ngrok tunnel
 public_url = ngrok.connect(5000)
 print(f" * ngrok tunnel \"http://127.0.0.1:5000\" -> \"{public_url}\"")
