@@ -28,10 +28,12 @@ from detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_or
 from torchvision.transforms.functional import to_pil_image
 from util.pipeline import quantize_4bit, restart_cpu_offload, torch_gc
 import os
-from dot_env import load_dotenv
+from dotenv import load_dotenv
 
 load_dotenv()
 # Initialize Flask app
+dotenv_path = "/content/drive/Shared drives/AI/AI Models/models/colabenv/.env"
+load_dotenv(dotenv_path)
 app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = os.getenv("my_super_secret_key") 
 jwt = JWTManager(app)
