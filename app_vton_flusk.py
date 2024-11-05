@@ -3,6 +3,7 @@ import io
 import torch
 import logging
 from flask import Flask, request, jsonify
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import threading
 import queue
 import uuid
@@ -26,11 +27,14 @@ from preprocess.openpose.run_openpose import OpenPose
 from detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
 from util.pipeline import quantize_4bit, restart_cpu_offload, torch_gc
+import os
+from dot_env import load_dotenv
 
+load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Allow cross-origin requests for testing
-
+app.config["JWT_SECRET_KEY"] = os.getenv("my_super_secret_key") 
+jwt = JWTManager(app)
 # Start ngrok tunnel
 public_url = ngrok.connect(5000)
 print(f" * ngrok tunnel \"http://127.0.0.1:5000\" -> \"{public_url}\"")
@@ -350,10 +354,25 @@ def start_tryon(input_dict, garm_img, garment_des, category, is_checked, is_chec
                         results.append(img_path)
 
                 return results, mask_gray
+            
+@app.route("/login", methods=["POST"])
+def login():
+    username = request.json.get("username")
+    password = request.json.get("password")
+
+    # Replace this with your authentication logic
+    if username == "user" and password == "password":
+        access_token = create_access_token(identity=username)
+        return jsonify(access_token=access_token)
+    else:
+        return jsonify({"error": "Invalid credentials"}), 401
+
 
 # Flask route for try-on
 @app.route("/try-on", methods=["POST"])
+@jwt_required()
 def try_on():
+    current_user = get_jwt_identity()
     try:
         data = request.json
 
@@ -411,7 +430,9 @@ def try_on():
 
 # Endpoint to check task status
 @app.route("/task_status/<task_id>", methods=["GET"])
+@jwt_required()
 def task_status(task_id):
+    current_user = get_jwt_identity()
     with task_lock:
         if task_id in task_results:
             return jsonify(task_results[task_id])
