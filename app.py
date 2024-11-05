@@ -310,5 +310,3 @@ with image_blocks as demo:
 
 
 image_blocks.launch()
-
-asd
