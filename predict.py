@@ -13,10 +13,14 @@ from preprocess.openpose.run_openpose import OpenPose
 from detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from util.pipeline import quantize_4bit, restart_cpu_offload, torch_gc
 import apply_net
+import os
 # Import your custom models
 from src.unet_hacked_tryon import UNet2DConditionModel
 from src.unet_hacked_garmnet import UNet2DConditionModel as UNet2DConditionModel_ref
 from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
+
+# Define the path to the models folder
+models_folder = '/app/models'
 
 # Device and model configurations
 dtype = torch.float16
@@ -60,7 +64,7 @@ def start_tryon(input_dict, garm_img, garment_des, category, is_checked, is_chec
             print("Initializing models and pipeline")
             # Load UNet model
             unet = UNet2DConditionModel.from_pretrained(
-                model_id,
+                os.path.join(models_folder, model_id),
                 subfolder="unet",
                 torch_dtype=dtypeQuantize,
             ).to(device)
@@ -68,7 +72,7 @@ def start_tryon(input_dict, garm_img, garment_des, category, is_checked, is_chec
 
             # Load image encoder
             image_encoder = CLIPVisionModelWithProjection.from_pretrained(
-                model_id,
+                os.path.join(models_folder, model_id),
                 subfolder="image_encoder",
                 torch_dtype=torch.float16,
             ).to(device)
@@ -76,14 +80,14 @@ def start_tryon(input_dict, garm_img, garment_des, category, is_checked, is_chec
 
             # Load VAE
             if fixed_vae:
-                vae = AutoencoderKL.from_pretrained(vae_model_id, torch_dtype=dtype).to(device)
+                vae = AutoencoderKL.from_pretrained(os.path.join(models_folder, vae_model_id), torch_dtype=dtype).to(device)
             else:
-                vae = AutoencoderKL.from_pretrained(model_id, subfolder="vae", torch_dtype=dtype).to(device)
+                vae = AutoencoderKL.from_pretrained(os.path.join(models_folder, model_id), subfolder="vae", torch_dtype=dtype).to(device)
             vae.requires_grad_(False)
 
             # Load UNet Encoder
             UNet_Encoder = UNet2DConditionModel_ref.from_pretrained(
-                model_id,
+                os.path.join(models_folder, model_id),
                 subfolder="unet_encoder",
                 torch_dtype=dtypeQuantize,
             ).to(device)
@@ -91,7 +95,7 @@ def start_tryon(input_dict, garm_img, garment_des, category, is_checked, is_chec
 
             # Initialize pipeline
             pipe_param = {
-                'pretrained_model_name_or_path': model_id,
+                'pretrained_model_name_or_path': os.path.join(models_folder, model_id),
                 'unet': unet,
                 'torch_dtype': dtype,
                 'vae': vae,

@@ -27,7 +27,13 @@ rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copy project files
-COPY IDM-VTON /app/IDM-VTON
+COPY IDM-VTON-build /app/IDM-VTON-build
+
+# Copy the script to download models
+COPY download_models.sh /app/download_models.sh
+
+# Run the script to download models
+RUN chmod +x /app/download_models.sh && /app/download_models.sh
 
 # Install Python dependencies
 RUN pip3 install --upgrade pip && \
@@ -38,15 +44,6 @@ torchaudio==2.2.1 \
 --index-url https://download.pytorch.org/whl/cu121 && \
 pip3 install --no-cache-dir -r /app/IDM-VTON/requirements.txt && \
 rm -rf /root/.cache/pip
-
-# Set Hugging Face cache directory
-ENV HF_HOME='/app/models'
-
-# Ensure model cache directory exists
-RUN mkdir -p /app/models
-
-# Copy preloaded models to the cache directory
-COPY hub /app/models/hub
 
 # Set the default command to run the application
 CMD ["python3", "/app/IDM-VTON/handler.py"]
