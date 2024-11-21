@@ -24,4 +24,3 @@ bitsandbytes
 huggingface_hub
 pyngrok
 xformers==0.0.24
-runpod
