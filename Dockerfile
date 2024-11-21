@@ -26,8 +26,7 @@ RUN pip install -r requirements.txt && pip cache purge
 
 RUN pip install huggingface_hub==0.25.2 matplotlib
 
-RUN chmod +x download_models.sh
+RUN chmod +x download_models.sh && bash ./download_models.sh
 
-RUN ./download_models.sh
 
 CMD /IDM-VTON-build/src/start.sh

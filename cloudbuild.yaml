@@ -1,26 +1,28 @@
----
 steps:
-  # Step 1: Clone the repository
-  - name: 'gcr.io/cloud-builders/git'
-    args: ['clone', '--branch=cloner', 'https://github.com/your-repo/IDM-VTON.git']
+  # Step 1: Build the Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "docker.io/mesames/idm-vton-goog:usegoogle"
+      - "."
+    env:
+      - "DOCKER_BUILDKIT=1"
 
-  # Step 2: Set up Git LFS
-  - name: 'gcr.io/cloud-builders/git'
-    entrypoint: 'bash'
-    args: ['-c', 'cd IDM-VTON && git lfs install && git lfs pull']
+  # Step 2: Log in to Docker Hub
+  - name: "gcr.io/cloud-builders/docker"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        echo "$_DOCKER_PASSWORD" | docker login -u "$_DOCKER_USERNAME" --password-stdin
 
-  # Step 3: Install Python dependencies
-  - name: 'python'
-    entrypoint: 'bash'
-    args: ['-c', 'pip3 install --upgrade pip && pip3 install --no-cache-dir torch==2.2.1 torchvision==0.17.1 torchaudio==2.2.1 --index-url https://download.pytorch.org/whl/cu121 && pip3 install --no-cache-dir -r IDM-VTON/requirements.txt']
+  # Step 3: Push the Docker image to Docker Hub
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "docker.io/mesames/idm-vton-goog:usegoogle"
 
-  # Step 4: Build the Docker image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/your-project-id/your-image-name', '.']
-
-  # Step 5: Push the Docker image to Docker Hub
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/your-project-id/your-image-name']
-
-images:
-  - 'gcr.io/your-project-id/your-image-name'
+substitutions:
+  _DOCKER_USERNAME: ""
+  _DOCKER_PASSWORD: ""
