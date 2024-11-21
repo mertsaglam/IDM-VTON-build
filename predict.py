@@ -21,8 +21,8 @@ from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
 # Device and model configurations
 dtype = torch.float16
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model_id = '/content/drive/Shareddrives/AI/AI Models/models/IDM-VTON'
-vae_model_id = '/content/drive/Shareddrives/AI/AI Models/models/sdxl-vae-fp16-fix'
+model_id = 'yisol/IDM-VTON'
+vae_model_id = 'madebyollin/sdxl-vae-fp16-fix'
 
 load_mode = '8bit'  # or '4bit' or None
 fixed_vae = True
