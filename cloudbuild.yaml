@@ -11,11 +11,12 @@ steps:
 
   # Step 2: Log in to Docker Hub
   - name: "gcr.io/cloud-builders/docker"
-    entrypoint: "bash"
     args:
-      - "-c"
-      - |
-        echo "$_DOCKER_PASSWORD" | docker login -u "$_DOCKER_USERNAME" --password-stdin
+      - "login"
+      - "-u"
+      - "$_DOCKER_HUB_USERNAME"
+      - "-p"
+      - "$_DOCKER_HUB_TOKEN"
 
   # Step 3: Push the Docker image to Docker Hub
   - name: "gcr.io/cloud-builders/docker"
@@ -23,6 +24,3 @@ steps:
       - "push"
       - "docker.io/mesames/idm-vton-goog:usegoogle"
 
-substitutions:
-  _DOCKER_USERNAME: ""
-  _DOCKER_PASSWORD: ""

@@ -14,19 +14,24 @@ COPY builder/requirements.txt /requirements.txt
 RUN pip install -r /requirements.txt && \
     rm /requirements.txt
 
-# Install git-lfs
-RUN apt-get update && apt-get install -y git-lfs && git lfs install
+# Install git-lfs and clean up apt cache
+RUN apt-get update && apt-get install -y git-lfs && git lfs install && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Clone the project from the 'cloner' branch
-RUN git clone --branch cloner https://github.com/mertsaglam/IDM-VTON-build.git /IDM-VTON-build
+# Clone the project from the 'cloner' branch directly into /app
+RUN git clone --branch cloner https://github.com/mertsaglam/IDM-VTON-build.git /app
 
-WORKDIR /IDM-VTON-build
+WORKDIR /app
 
-RUN pip install -r requirements.txt && pip cache purge
+# Install Python dependencies and clean up pip cache
+RUN pip install -r /app/requirements.txt && \
+    pip install huggingface_hub==0.25.2 matplotlib && \
+    pip cache purge
 
-RUN pip install huggingface_hub==0.25.2 matplotlib
+# Add the download_models.sh script
+COPY builder/download_models.sh /app/download_models.sh
 
-RUN chmod +x download_models.sh && bash ./download_models.sh
+# Make the download_models.sh script executable and run it
+RUN chmod +x /app/download_models.sh && bash /app/download_models.sh
 
-
-CMD /IDM-VTON-build/src/start.sh
+CMD /app/src/start.sh
