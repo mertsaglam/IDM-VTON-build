@@ -1,4 +1,4 @@
-FROM python:3.10.12-slim
+FROM python:3.10.11-slim
 
 ENV DEBIAN_FRONTEND=noninteractive \
     NVIDIA_DRIVER_CAPABILITIES=all \
