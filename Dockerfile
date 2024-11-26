@@ -28,9 +28,16 @@ RUN chmod +x /app/src/start.sh
 WORKDIR /app
 
 # Install Python dependencies and clean up pip cache
-RUN pip install -r /app/requirements.txt && \
-    pip install huggingface_hub==0.25.2 matplotlib && \
-    pip cache purge
+# Install additional Python dependencies
+RUN pip install torch==2.2.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 --upgrade && \
+    pip install xformers==0.0.24 && \
+    pip install bitsandbytes==0.43.0 --upgrade && \
+    pip install gradio && \
+    pip install huggingface_hub==0.25.2 matplotlib
+
+RUN pip cache purge
+
+    
 
 # Download model files using aria2c
 RUN aria2c --console-log-level=error -c -x 16 -s 16 -k 1M 'https://huggingface.co/yisol/IDM-VTON/resolve/main/densepose/model_final_162be9.pkl' -d './models/IDM-VTON/densepose' -o 'model_final_162be9.pkl'
