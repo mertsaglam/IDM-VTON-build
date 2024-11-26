@@ -3,12 +3,6 @@ import runpod
 import base64
 from predict import predict  # Import the predict function
 
-def load_image_from_url(url):
-    """Download an image from a URL and return its base64 encoded string."""
-    response = requests.get(url)
-    response.raise_for_status()  # Raise an exception for HTTP errors
-    return base64.b64encode(response.content).decode('utf-8')
-
 def generate_virtual_tryon(human_image_base64, garment_image_base64, **predict_kwargs):
     """Generate a virtual try-on and return the output images as base64 strings."""
     # Call the predict function
