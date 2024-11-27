@@ -1,43 +1,61 @@
-FROM python:3.10.11
 
+# Base image with CUDA 12.1 support
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu20.04
+
+# Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     NVIDIA_DRIVER_CAPABILITIES=all \
     PIP_PREFER_BINARY=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    TZ=Etc/UTC
 
-# Setup system packages
-COPY builder/setup.sh /setup.sh
-RUN /bin/bash /setup.sh && \
-    rm /setup.sh
+# Install system dependencies and Python 3.10.11
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    curl \
+    build-essential \
+    libopencv-dev \
+    ffmpeg \
+    git \
+    software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && apt-get install -y \
+    python3.10 \
+    python3.10-dev \
+    python3-pip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY builder/requirements.txt /requirements.txt 
-RUN pip install -r /requirements.txt && \
-    rm /requirements.txt
+# Set Python 3.10 as the default Python version
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
 
-# Install git-lfs and clean up apt cache
+# Copy and install dependencies from the builder requirements file
+COPY builder/requirements.txt /builder_requirements.txt
+RUN python -m pip install --upgrade pip && \
+    pip install --no-cache-dir -r /builder_requirements.txt && \
+    rm /builder_requirements.txt
+
+# Install additional Python packages explicitly
+RUN pip install --no-cache-dir \
+    torch==2.2.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
+    pip install xformers==0.0.24 bitsandbytes==0.43.0 gradio huggingface_hub==0.25.2 matplotlib
+
+# Install git-lfs and clean up
 RUN apt-get update && apt-get install -y git-lfs && git lfs install && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Clone the project from the 'cloner' branch directly into /app
+# Clone the project repository
 RUN git clone --branch cloner https://github.com/mertsaglam/IDM-VTON-build.git /app
 
-# Ensure the start.sh script is copied and executable
+# Install dependencies from the cloned project requirements file
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Ensure the start.sh script is executable
 COPY src/start.sh /app/src/start.sh
 RUN chmod +x /app/src/start.sh
 
+# Set the working directory
 WORKDIR /app
-
-# Install Python dependencies from the cloned repository
-RUN pip install -r /app/requirements.txt
-
-# Install additional Python dependencies and clean up pip cache
-RUN pip install torch==2.2.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 --upgrade && \
-    pip install xformers==0.0.24 && \
-    pip install bitsandbytes==0.43.0 --upgrade && \
-    pip install gradio && \
-    pip install huggingface_hub==0.25.2 matplotlib
-
-RUN pip cache purge
 
 # Download model files using aria2c
 RUN aria2c --console-log-level=error -c -x 16 -s 16 -k 1M 'https://huggingface.co/yisol/IDM-VTON/resolve/main/densepose/model_final_162be9.pkl' -d './models/IDM-VTON/densepose' -o 'model_final_162be9.pkl'
@@ -72,5 +90,10 @@ RUN aria2c --console-log-level=error -c -x 16 -s 16 -k 1M 'https://huggingface.c
 RUN aria2c --console-log-level=error -c -x 16 -s 16 -k 1M 'https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/resolve/main/sdxl.vae.safetensors' -d './models/sdxl-vae-fp16-fix' -o 'sdxl.vae.safetensors'
 RUN aria2c --console-log-level=error -c -x 16 -s 16 -k 1M 'https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/resolve/main/sdxl_vae.safetensors' -d './models/sdxl-vae-fp16-fix' -o 'sdxl_vae.safetensors'
 
+
+
+# Clean up pip cache
+RUN pip cache purge
+
 # Set the entrypoint to start the application
-CMD ["/app/src/start.sh"]
+ENTRYPOINT ["/app/src/start.sh"]
